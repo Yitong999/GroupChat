@@ -1,0 +1,142 @@
+body{
+
+}
+@media screen and (min-width: 1024px) {
+    #app-view { width: 80%; }
+}
+@media screen and (min-width:768px) and (max-width:1024px) {
+    #app-view { width: 90%; }
+}
+@media screen and (max-width: 764px) {
+    #app-view { width: 100%; }
+}
+
+h4{
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
+#app-menu{
+    background-color: slateblue;
+    text-align: center;
+    padding: 20px;
+    border: 1px solid black;
+}
+
+.menu-item{
+    display: inline;
+    padding-left: 150px;
+    padding-right: 150px;
+    padding-top: 20px;
+    padding-bottom: 20px;
+    border: 0px solid black;
+}
+
+a{
+    text-decoration: none;
+    color: white;
+}
+
+.room-list{
+    border: 1px solid black;
+    padding-bottom: 500px;
+}
+
+.room-list > li{
+    border: 1px solid black;
+    background-color: gray;
+    list-style-type: none;
+    margin: 0;
+}
+
+.room-list a{
+    color: black;
+}
+
+.room-name{
+    padding: 10px;
+    border: 1px solid black;
+}
+
+
+.message-list{
+    background-color: gray;
+    border: 1px solid black;
+    padding-bottom: 500px;
+}
+
+.profile-form{
+    background-color: white;
+    border: 1px solid black;
+    padding-bottom: 500px;
+}
+
+
+.message{
+    /* left: auto; */
+    border: 1px solid black;
+    background-color: gray;
+    width: 300px;
+}
+.my-message{
+    margin-left: auto;
+    margin-right: 0;
+    border: 1px solid black;
+    background-color: rgb(145, 88, 231);
+    width: 300px;
+}
+
+#page-view ul {
+    padding-left: 0;
+}
+
+
+.page-control textarea{
+    width: 400px;
+}
+
+.page-control button{
+    padding-top: 30px;
+}
+
+
+
+
+
+
+
+
+
+
+
+div.page-control{
+    background-color: slateblue;
+    text-align: center;
+    padding: 10px;
+    border: 1px solid black;
+}
+
+
+ul.roomlist{
+    
+}
+
+
+
+
+
+#app-menu li:hover a{
+    color:yellow;
+}
+
+#app-menu li:hover img{
+    background-color:yellow;
+}
+
+#app-menu li:hover{
+    background-color: rgb(133, 123, 197);
+}
+
+.room-list li:hover{
+    background-color: rgb(161, 154, 210);
+}

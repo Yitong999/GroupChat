@@ -4,7 +4,53 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>CPEN322 Project</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="http://52.43.220.29/cpen322/test-a1.js" type="text/javascript"></script>
   </head>
   <body>
+    <div id = "app-view">
+      <ul id = "app-menu">
+        <li class = "menu-item">
+          <img src="assets/chat-icon.png" width="20" height="20"/>
+          <a href="/">Rooms</a>
+        </li>
+        <li class = "menu-item">
+          <img src="assets/profile-icon.png" width="20" height="20"/>
+
+          <a href="/profile">Profile</a>
+        </li>
+      </ul>
+  
+      <div id = "page-view">
+          <div class = "content">
+              <ul class = "room-list">
+                  <li>
+                      <img src="assets/everyone-icon.png" width="20" height="20"/>
+                      <a href="/chat">Everyone in CPEN400A</a>
+                  </li>
+                  <li>
+                    <img src="assets/bibimbap.jpg" width="20" height="20"/>
+                    <a href="/chat">Foodies only</a>
+                  </li>  
+                  <li>
+                      <img src="assets/minecraft.jpg" width="20" height="20"/>
+                      <a href="/chat">Gamers unite</a>
+                  </li>
+                  <li>
+                    <img src="assets/canucks.png" width="20" height="20"/>
+                    <a href="/chat">Canucks Fans</a>
+                  </li>      
+              </ul>
+      
+              <div class = "page-control">
+                  <input type="text" name="roomSearch" placeholder="Room Title">
+                  <button type = "button">Create Room</button>
+              </div>
+          </div>
+      </div>
+      
+  </div>
+  
+  
   </body>
-</html>
+  </html>
