@@ -1,6 +1,59 @@
 const defaultImg = "assets/everyone-icon.png";
 const profile = {username: "Alice"}
 var roomId = 0;
+
+var Service = {
+    origin: window.location.origin,
+    getAllRooms: function(){
+        var xhrRequest = new XMLHttpRequest();
+        return new Promise((resolve, reject) => {
+            xhrRequest.open("GET", this.origin + '/chat');
+            xhrRequest.onload = function(){
+                if (xhrRequest.status == 200){
+                    resolve(JSON.parse(xhrRequest.response));
+                }else{
+                    reject(new Error(xhrRequest.responseText));
+                }
+            }
+            xhrRequest.ontimeout = function() {
+                reject((new Error(xhrRequest.status)));
+            }
+            xhrRequest.onerror = function() {
+                reject((new Error(xhrRequest.status)));
+            };  
+            
+            xhrRequest.timeout = 500;
+            xhrRequest.send();
+        });
+    },
+    addRoom: function(data){
+        var xhrRequest = new XMLHttpRequest();
+        return new Promise((resolve, reject) => {
+            xhrRequest.open("POST", this.origin + '/chat');
+            xhrRequest.setRequestHeader('Content-Type', 'application/json');
+            xhrRequest.onload = function(){
+                if (xhrRequest.status == 200){
+                    resolve(JSON.parse(xhrRequest.response));
+                }else{
+                    reject(new Error(xhrRequest.responseText));
+                }
+            }
+            xhrRequest.ontimeout = function() {
+                reject((new Error(xhrRequest.status)));
+            }
+            xhrRequest.onerror = function() {
+                reject((new Error(xhrRequest.status)));
+            };
+            xhrRequest.send(JSON.stringify(data));
+            xhrRequest.timeout = 500;
+            
+        });
+    }
+    
+
+}
+
+
 window.addEventListener("load", main);
 
 
@@ -118,15 +171,25 @@ class LobbyView {
         }.bind(this);
 
         this.buttonElem.addEventListener('click', 
-                            function(){
-                                
-                                var roomName = this.inputElem.value;
-                                console.log(roomId);
-                                this.lobby.addRoom(roomId, roomName, defaultImg, "");
-                                
-                                this.inputElem.value = "";
-                            }.bind(this),
-                            false
+            function(){
+                var room_data = {name: this.inputElem.value, image: defaultImg};
+                
+                var response = Service.addRoom(room_data);
+                response.then(
+                    (result)=>{
+                        this.lobby.addRoom(result.id, result.name, result.image, result.messages);
+                    },
+                    (error)=>{
+                        console.log(error);
+                    }
+                )
+                // var roomName = this.inputElem.value;
+                // console.log(roomId);
+                // this.lobby.addRoom(roomId, roomName, defaultImg, "");
+                
+                this.inputElem.value = "";
+            }.bind(this),
+            false
         );
         this.redrawList();
         
@@ -155,7 +218,8 @@ class LobbyView {
 
 
 class ChatView{
-    constructor(){
+    constructor(socket){
+        this.socket = socket;
         this.elem = createDOM(chatHTML);
         this.titleElem = this.elem.querySelector("h4.room-name");
         this.chatElem = this.elem.querySelector("div.message-list");
@@ -165,6 +229,7 @@ class ChatView{
 
         this.buttonElem.addEventListener("click", function(event) {
             this.sendMessage();
+            //clean input text bar
             this.inputElem.value = "";
         }.bind(this),
         false);
@@ -172,6 +237,7 @@ class ChatView{
         this.inputElem.addEventListener('keyup', function(event) {
             if(event.keyCode == 13 && !event.shiftKey) {
                 this.sendMessage();
+                //clean input text bar
                 this.inputElem.value = "";
             }
             
@@ -182,6 +248,7 @@ class ChatView{
         let text = this.inputElem.value;
         console.log("input text: " + text);
         this.room.addMessage(profile.username, text);
+        this.socket.send((JSON.stringify({roomId: this.room.id, username: profile.username, text: text}))); 
         this.inputElem.value = "";
     }
 
@@ -190,6 +257,7 @@ class ChatView{
         this.titleElem.innerHTML = room.name;
 
         emptyDOM(this.chatElem);
+        //retrive all messages
         for (var i = 0; i < room.messages.length; i++){
             if (room.messages[i].username != profile.username){ //messages from others
                                                                 //listed in the right
@@ -282,17 +350,21 @@ class Room{
             return;
         }
 
+        //define the message json format
         var message = {
             username: username,
             text: text
         };
         
         console.log(Array.isArray(this.messages));
-        if (!Array.isArray(this.messages)){
+        if (!Array.isArray(this.messages)){ //some expected error [messages is not
+                                            //recognized as an array]
+                                            //cast as array
             this.messages = Array.from(this.messages);
         }
         this.messages.push(message);
         
+        //debug
         for (var i = 0; i < this.messages.length; i++){
             console.log("message debug: " + this.messages[i].text);
         }
@@ -307,10 +379,11 @@ class Room{
 class Lobby{
     constructor(){
         this.rooms = [];
-        this.addRoom(0, "room-0", defaultImg, "");
-        this.addRoom(1, "room-1", defaultImg, "");
-        this.addRoom(2, "room-2", defaultImg, "");
-        this.addRoom(3, "room-3", defaultImg, "");
+        //default 4 rooms set-up
+        // this.addRoom(0, "room-0", defaultImg, "");
+        // this.addRoom(1, "room-1", defaultImg, "");
+        // this.addRoom(2, "room-2", defaultImg, "");
+        // this.addRoom(3, "room-3", defaultImg, "");
     }
 
     getRoom(roomId){
@@ -319,6 +392,7 @@ class Lobby{
 
 
     addRoom(id, name, image, messages){
+        //quit if room is already created
         if (id in this.rooms){
             return;
         }
@@ -334,13 +408,22 @@ class Lobby{
 
 
 function main(){
+    const socket = new WebSocket('ws://localhost:8000');
+    socket.addEventListener('message', function(event){
+        var received_data = JSON.parse(event.data);
+        var room = lobby.getRoom(received_data.roomId.toString());
+        room.addMessage(received_data.username, received_data.text);
+    });
+
     window.addEventListener('popstate', renderRoute);
     var lobby = new Lobby();
 
     var lobbyView = new LobbyView(lobby);
-    var chatView = new ChatView();
+    var chatView = new ChatView(socket);
     var profileView = new ProfileView();
     renderRoute();
+    refreshLobby();
+    setInterval(refreshLobby, 5000);
 
     
     function renderRoute(){
@@ -367,13 +450,37 @@ function main(){
 
         }
     }
+
+    function refreshLobby(){
+        var response = Service.getAllRooms();
+        response.then(
+            (result)=>{
+                               
+                for (var i = 0; i < result.length; i++){
+                    var room = lobby.getRoom(result[i].id);
+
+                    if (room){
+                        room.name = result[i].name;
+                        room.image = result[i].image;
+                    }else{
+                        lobby.addRoom(result[i].id, result[i].name, result[i].image, result[i].messages);
+                    }
+                }
+            }
+        )
+    }
+    
+
+
     
     cpen322.export(arguments.callee, {
         renderRoute: renderRoute,
+        refreshLobby: refreshLobby,
         lobbyView: lobbyView,
         chatView: chatView,
         profileView: profileView,
-        lobby: lobby
+        lobby: lobby,
+        socket: socket
         //renderRoute, lobbyView, chatView, profileView
     });
 }
