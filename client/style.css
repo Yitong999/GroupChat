@@ -60,9 +60,11 @@ a{
 
 
 .message-list{
+    overflow: auto;
     background-color: gray;
     border: 1px solid black;
     padding-bottom: 500px;
+    height: 200px;
 }
 
 .profile-form{

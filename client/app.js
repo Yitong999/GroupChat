@@ -48,13 +48,67 @@ var Service = {
             xhrRequest.timeout = 500;
             
         });
+    },
+    getLastConversation: function(roomId, before){
+        var xhrRequest = new XMLHttpRequest();
+        return new Promise((resolve, reject) => {
+            xhrRequest.open("GET", this.origin + "/chat/" + roomId + "/messages?before=" + before);
+            xhrRequest.onload = function(){
+                if (xhrRequest.status==200) {
+                    resolve(JSON.parse(xhrRequest.response));
+                } else {	
+                    reject((new Error(xhrRequest.responseText)));
+                }
+            }
+            xhrRequest.ontimeout = function() {
+                reject((new Error(xhrRequest.status)));
+            }
+            xhrRequest.onerror = function() {
+                reject((new Error(xhrRequest.status)));
+            };  
+            
+            xhrRequest.timeout = 500;
+            xhrRequest.send();
+        });
     }
+    
     
 
 }
 
+//generator function
+function* makeConversationLoader(room){
+    var conversation;
+    var before = room.time;
 
-window.addEventListener("load", main);
+    do{
+        room.canLoadConversation = false;
+        yield(
+            new Promise ((resolve, reject) => {
+                Service.getLastConversation(room.id, before).then(result => {
+                    if (result){
+                        before = result.timestamp;
+                        conversation = result;
+                        if (result){
+                            room.canLoadConversation = true;
+                            room.addConversation(conversation);
+                            resolve(conversation);
+                        }else{
+                            //canLoadConversation is false
+                            resolve(null);
+                        }
+                    }else{
+                        conversation = null;
+                        resolve(null);
+                    }
+                })
+            })
+        )
+    }while(conversation);
+}
+
+
+
 
 
 // Removes the contents of the given DOM element (equivalent to elem.innerHTML = '' but faster)
@@ -242,6 +296,13 @@ class ChatView{
             }
             
         }.bind(this), false);
+
+        this.chatElem.addEventListener('wheel', function(event){
+            if(this.room.canLoadConversation == true && event.deltaY < 0 && this.chatElem.scrollTop === 0){
+                this.room.getLastConversation.next();
+            }
+        }.bind(this));   
+
     }
 
     sendMessage(){
@@ -252,6 +313,8 @@ class ChatView{
         this.inputElem.value = "";
     }
 
+
+    
     setRoom(room){
         this.room = room;
         this.titleElem.innerHTML = room.name;
@@ -323,9 +386,46 @@ class ChatView{
                 ));
             }
         }.bind(this);
+
         
+        this.room.onFetchConversation = (conversation) => {
+            var height_init = this.chatElem.scrollTop;
+            var messages = conversation.messages;
+
+            var user_name;
+            var user_text;
+            for(let i = messages.length-1; i >= 0; i--) {
+                //retrive info
+                user_name = messages[i].username;
+                user_text = messages[i].text;
+                
+                if(messages[i].username == profile.username) { //message from user
+                    this.chatElem.insertBefore(createDOM(
+                        `<div class="message my-message">
+                            <span class="message-user">` + user_name + `</span>
+                            <span class="message-text">` + user_text + `</span>
+                            </div>`
+                    ), this.chatElem.firstChild);
+                }else { //message from others
+                    this.chatElem.insertBefore(createDOM(
+                        `<div class="message my-message">
+                                <span class="message-user">` + user_name + `</span>
+                                <span class="message-text">` + user_text + `</span>
+                            </div>`
+                    ), this.chatElem.firstChild);
+                }
+            }
+            var height_aft = this.chatElem.scrollTop;
+            this.chatElem.scrollTop = height_aft - height_init;
+        }
+ 
     }
 }
+
+
+
+
+
 
 class ProfileView{
     constructor(){
@@ -339,9 +439,11 @@ class Room{
         this.name = name;
         this.image = image;
         this.messages = messages;
+        this.time = Date.now();
         //this.messages = Array.from(messages);
         //this.messages = [];
-
+        this.canLoadConversation = true;
+        this.getLastConversation = makeConversationLoader(this);
     }
 
     addMessage(username, text){
@@ -374,6 +476,22 @@ class Room{
         }
        
     }
+
+    addConversation(conversation){
+        var messages = conversation.messages;
+        var roomId = conversation.room_id;
+
+        var i = 0;
+        while (i < messages.length){
+            this.messages.push(messages[i]);
+            i++;
+        }
+
+        if(this.onFetchConversation) {
+            this.onFetchConversation(conversation);
+        }
+    }
+    
 }
 
 class Lobby{
@@ -414,16 +532,16 @@ function main(){
         var room = lobby.getRoom(received_data.roomId.toString());
         room.addMessage(received_data.username, received_data.text);
     });
+    
 
-    window.addEventListener('popstate', renderRoute);
+    
     var lobby = new Lobby();
 
     var lobbyView = new LobbyView(lobby);
     var chatView = new ChatView(socket);
     var profileView = new ProfileView();
-    renderRoute();
-    refreshLobby();
-    setInterval(refreshLobby, 5000);
+    
+
 
     
     function renderRoute(){
@@ -450,40 +568,51 @@ function main(){
 
         }
     }
-
+    
+    
     function refreshLobby(){
-        var response = Service.getAllRooms();
-        response.then(
-            (result)=>{
-                               
-                for (var i = 0; i < result.length; i++){
-                    var room = lobby.getRoom(result[i].id);
-
-                    if (room){
-                        room.name = result[i].name;
-                        room.image = result[i].image;
-                    }else{
-                        lobby.addRoom(result[i].id, result[i].name, result[i].image, result[i].messages);
+        Service.getAllRooms()
+            .then(result => {
+                for (let i in result) {
+                    let room = result[i];
+                    if (room._id in lobby.rooms) {
+                        lobby.rooms[room._id].image = room.image;
+                        lobby.rooms[room._id].name = room.name;
+                    } else {
+                        lobby.addRoom(room._id, room.name, room.image, room.messages);
                     }
                 }
-            }
-        )
-    }
-    
+            })
+    };
 
 
-    
+    renderRoute();
+    refreshLobby();
+    window.addEventListener("popstate", renderRoute);
+    setInterval(refreshLobby, 5000);
+
+
     cpen322.export(arguments.callee, {
-        renderRoute: renderRoute,
-        refreshLobby: refreshLobby,
-        lobbyView: lobbyView,
-        chatView: chatView,
-        profileView: profileView,
+        renderRoute,
+        refreshLobby,
+        
         lobby: lobby,
+        
+        lobbyView: lobbyView,
+
+        profileView: profileView,
+
+        chatView: chatView,
         socket: socket
-        //renderRoute, lobbyView, chatView, profileView
+
+        // addConversation,
     });
 }
+
+
+
+window.addEventListener("load", main);
+
 
 
 
