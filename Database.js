@@ -166,4 +166,18 @@ Database.prototype.addConversation = function(conversation){
 	)
 }
 
+Database.prototype.getUser = function(username){
+	return this.connected.then(db =>
+		new Promise((resolve, reject) => {
+			db.collection('users').findOne({'username': username}).then(one_user => {
+				if (one_user){
+					resolve(one_user);
+				}else{
+					resolve(null);
+				}
+			})
+		})
+	)
+}
+
 module.exports = Database;

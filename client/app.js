@@ -1,5 +1,5 @@
 const defaultImg = "assets/everyone-icon.png";
-const profile = {username: "Alice"}
+const profile = {username: "unsigned"}
 var roomId = 0;
 
 var Service = {
@@ -70,11 +70,47 @@ var Service = {
             xhrRequest.timeout = 500;
             xhrRequest.send();
         });
+    },
+    getProfile: function(){
+        var xhrRequest = new XMLHttpRequest();
+        return new Promise((resolve, reject) => {
+            xhrRequest.open("GET", this.origin + '/profile');
+            xhrRequest.onload = function(){
+                if (xhrRequest.status == 200){
+                    resolve(JSON.parse(xhrRequest.response));
+                }else{
+                    reject((new Error(xhrRequest.responseText)));
+                }
+            }
+
+            xhrRequest.ontimeout = function() {
+                reject((new Error(xhrRequest.status)));
+            }
+            xhrRequest.onerror = function() {
+                reject((new Error(xhrRequest.status)));
+            };  
+            
+            xhrRequest.timeout = 500;
+            xhrRequest.send();
+        })
     }
+  
     
     
 
 }
+
+
+function sanitize(string) {
+	const map = {
+		'&': '&amp;',
+		'<': '&lt;',
+		'>': '&gt;',
+	};
+	const reg = /[&<>]/ig;
+	return string.replace(reg, (match)=>(map[match]));
+}
+
 
 //generator function
 function* makeConversationLoader(room){
@@ -123,10 +159,7 @@ function createDOM (htmlString){
     return template.content.firstChild;
 }
 
-const lobbyHTML =  `
-        <div class = "content">
-      <ul class = "room-list">
-          <li>
+{/* <li>
               <img src="assets/everyone-icon.png" width="20" height="20"/>
               <a href="#/chat">Everyone in CPEN400A</a>
           </li>
@@ -141,7 +174,11 @@ const lobbyHTML =  `
           <li>
             <img src="assets/canucks.png" width="20" height="20"/>
             <a href="#/chat">Canucks Fans</a>
-          </li>      
+          </li> */}
+const lobbyHTML =  `
+        <div class = "content">
+      <ul class = "room-list">
+                
       </ul>
 
       <div class = "page-control">
@@ -151,29 +188,35 @@ const lobbyHTML =  `
   </div>
         `;
 
+
+
+    //     <div class = "message">
+    //     <span class = "message-user">
+    //         Alice
+    //     </span>
+    //     <br>
+    //     <span class = "message-text">
+    //         message
+    //     </span>
+    // </div>
+
+    // <div class = "message my-message">
+    //     <span class = "message-user">
+    //         Bob
+    //     </span>
+    //     <br>
+    //     <span class = "message-text">
+    //         message
+    //     </span>
+    // </div>
 const chatHTML = `<div class = "content">
-<h4 class = "room-name">Room 1</h4>
+<h4 class = "room-name">Room</h4>
 
 <div class = "message-list">
-    <div class = "message">
-        <span class = "message-user">
-            Alice
-        </span>
-        <br>
-        <span class = "message-text">
-            message
-        </span>
-    </div>
+    
 
-    <div class = "message my-message">
-        <span class = "message-user">
-            Bob
-        </span>
-        <br>
-        <span class = "message-text">
-            message
-        </span>
-    </div>
+
+
 </div>
 
 <div class = "page-control">
@@ -237,6 +280,7 @@ class LobbyView {
                         console.log(error);
                     }
                 )
+
                 // var roomName = this.inputElem.value;
                 // console.log(roomId);
                 // this.lobby.addRoom(roomId, roomName, defaultImg, "");
@@ -251,18 +295,21 @@ class LobbyView {
 
     redrawList(){
         emptyDOM(this.listElem);
+        // console.log('debug in LobbyView, for lobby: ' + this.lobby["room-1"]);
+        // <a href="#/chat/`+room+`"></a>
         for(var room in this.lobby.rooms) {
+            console.log('debug in LobbyView, for lobby room: ');
             this.listElem.appendChild(
                 createDOM(
                     `<li>
-                        
-                            <a href="#/chat/`+room+`">
+                            <a href="#/chat/`+room+`"></a>
                             <img src="assets/everyone-icon.png" width="20" height="20"/>
                             `+this.lobby.rooms[room].name+`
                         </a>
                     </li>`
                     )
             );
+            console.log('debug in LobbyView, for lobby room: ');
         }
     }
 
@@ -307,9 +354,13 @@ class ChatView{
 
     sendMessage(){
         let text = this.inputElem.value;
+        //replace
+        text = sanitize(text);
+
         console.log("input text: " + text);
         this.room.addMessage(profile.username, text);
-        this.socket.send((JSON.stringify({roomId: this.room.id, username: profile.username, text: text}))); 
+        // this.socket.send((JSON.stringify({roomId: this.room.id, username: profile.username, text: text}))); 
+        this.socket.send((JSON.stringify({roomId: this.room.id, text: text}))); //modified in a5, ignore client username.
         this.inputElem.value = "";
     }
 
@@ -356,6 +407,11 @@ class ChatView{
         }
 
         this.room.onNewMessage = function(message){
+            var message_text = message.text;
+
+
+            message_text = sanitize(message_text);
+
             if (message.username == profile.username){
                 this.chatElem.appendChild(createDOM(
                     `
@@ -365,7 +421,7 @@ class ChatView{
                         </span>
                         <br>
                         <span class = "message-text">
-                            `+message.text+`
+                            `+message_text+`
                         </span>
                     </div>
                     `
@@ -375,11 +431,11 @@ class ChatView{
                     `
                     <div class = "message">
                         <span class = "message-user">
-                            `+room.messages[i].username+`
+                            `+message.username+`
                         </span>
                         <br>
                         <span class = "message-text">
-                            `+room.messages[i].text+`
+                            `+message_text+`
                         </span>
                     </div>
                     `
@@ -398,7 +454,9 @@ class ChatView{
                 //retrive info
                 user_name = messages[i].username;
                 user_text = messages[i].text;
-                
+
+                user_text = sanitize(user_text);
+
                 if(messages[i].username == profile.username) { //message from user
                     this.chatElem.insertBefore(createDOM(
                         `<div class="message my-message">
@@ -457,9 +515,12 @@ class Room{
             username: username,
             text: text
         };
+
+        // message['text'] = message['text'].replace(/</g, "");
+        // message['text'] = message['text'].replace(/>/g, "");
         
-        console.log(Array.isArray(this.messages));
-        if (!Array.isArray(this.messages)){ //some expected error [messages is not
+        console.log('addMessage dubug: ' + Array.isArray(this.messages));
+        if (!Array.isArray(this.messages)){ //some unexpected error [messages is not
                                             //recognized as an array]
                                             //cast as array
             this.messages = Array.from(this.messages);
@@ -496,7 +557,7 @@ class Room{
 
 class Lobby{
     constructor(){
-        this.rooms = [];
+        this.rooms = {};
         //default 4 rooms set-up
         // this.addRoom(0, "room-0", defaultImg, "");
         // this.addRoom(1, "room-1", defaultImg, "");
@@ -505,6 +566,7 @@ class Lobby{
     }
 
     getRoom(roomId){
+        console.log('num rooms is: ' + this.rooms.length);
         return this.rooms[roomId];
     }
 
@@ -514,7 +576,7 @@ class Lobby{
         if (id in this.rooms){
             return;
         }
-        roomId++;
+
         var newRoom = new Room(id, name, image, messages);
         this.rooms[id] = newRoom;
 
@@ -527,46 +589,74 @@ class Lobby{
 
 function main(){
     const socket = new WebSocket('ws://localhost:8000');
+
+    var lobby = new Lobby();
+    var lobbyView = new LobbyView(lobby);
+    var chatView = new ChatView(socket);
+    var profileView = new ProfileView();
+
+    
     socket.addEventListener('message', function(event){
         var received_data = JSON.parse(event.data);
-        var room = lobby.getRoom(received_data.roomId.toString());
+        var room = lobby.getRoom((received_data.roomId).toString());
         room.addMessage(received_data.username, received_data.text);
     });
     
 
     
-    var lobby = new Lobby();
-
-    var lobbyView = new LobbyView(lobby);
-    var chatView = new ChatView(socket);
-    var profileView = new ProfileView();
-    
-
 
     
     function renderRoute(){
         var url = window.location.hash;
+        console.log("url: " + url);
         var elem = document.getElementById("page-view");
         var roomID = "#/chat/[a-zA-Z0-9]+"; //to fulfill the test chat/id
         
-        if (url == "#/" || url == ""){
+        if (url === "#/" || url === ""){
             emptyDOM (elem);
             elem.appendChild(lobbyView.elem);    
         }else if (url.match(roomID)){
             emptyDOM (elem);
-
-            let room = lobbyView.lobby.getRoom(url.substring(7)) // #/chat/[room-id] starts in index 7
-            console.log("debug: if room is defined:" + room);
+            console.log('room id is:' + url.substring(7));
+            
+            let room = lobby.getRoom(url.substring(7)) // #/chat/[room-id] starts in index 7
+            console.log("debug: check elements of lobby: " + lobby.getRoom('room-1'));
+            console.log("debug: check if room is defined: " + room);
             if (room != null){
                 chatView.setRoom(room);
             }
             elem.appendChild(chatView.elem);
-        }else if (url == "#/profile"){
+        }else if (url === "#/profile"){
+            console.log('in profile');
             emptyDOM (elem);
             elem.appendChild(profileView.elem);
         }else{
 
         }
+
+        // var url = window.location.hash;
+        // url = url.split('/');
+        // var elem = document.getElementById("page-view");
+        // var roomID = "#/chat/[a-zA-Z0-9]+"; //to fulfill the test chat/id
+        
+        // if (url[1] == "" || url[1] == ""){
+        //     emptyDOM (elem);
+        //     elem.appendChild(lobbyView.elem);    
+        // }else if (url[1].match(roomID)){
+        //     emptyDOM (elem);
+
+        //     let room = lobbyView.lobby.getRoom(url.substring(7)) // #/chat/[room-id] starts in index 7
+        //     console.log("debug: if room is defined:" + room);
+        //     if (room != null){
+        //         chatView.setRoom(room);
+        //     }
+        //     elem.appendChild(chatView.elem);
+        // }else if (url[1] == "profile"){
+        //     emptyDOM (elem);
+        //     elem.appendChild(profileView.elem);
+        // }else{
+
+        // }
     }
     
     
@@ -590,7 +680,10 @@ function main(){
     refreshLobby();
     window.addEventListener("popstate", renderRoute);
     setInterval(refreshLobby, 5000);
-
+    Service.getProfile().then(result => {
+        console.log('#$#$result.username: ' + result['username']);
+        profile['username'] = result['username'];
+    })
 
     cpen322.export(arguments.callee, {
         renderRoute,
