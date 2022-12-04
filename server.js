@@ -330,6 +330,7 @@ function sanitize(string) {
 		'<': '&lt;',
 		'>': '&gt;',
 	};
+	
 	const reg = /[&<>]/ig;
 	return string.replace(reg, (match)=>(map[match]));
 }

@@ -20,7 +20,6 @@ function SessionManager (){
         var user = {
             'username': username,
             'time_create': current_time
-            // 'time_expire': current_time + maxAge
         };
         sessions[token_generator] = user;
 

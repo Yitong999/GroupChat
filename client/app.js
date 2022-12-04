@@ -558,11 +558,7 @@ class Room{
 class Lobby{
     constructor(){
         this.rooms = {};
-        //default 4 rooms set-up
-        // this.addRoom(0, "room-0", defaultImg, "");
-        // this.addRoom(1, "room-1", defaultImg, "");
-        // this.addRoom(2, "room-2", defaultImg, "");
-        // this.addRoom(3, "room-3", defaultImg, "");
+        
     }
 
     getRoom(roomId){
